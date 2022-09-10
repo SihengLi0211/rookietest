@@ -1,0 +1,19 @@
+# 天勤帐号
+# 注册地址:https://www.shinnytech.com/
+tq_username : sancho
+tq_password : sancho
+
+# 实盘账户
+com : '' # 期货公司如：H海通期货
+account : ''
+password : ''
+tcp : '' # 可选交易地址如：tcp://1.2.3.4:1234/
+
+# 回测时间
+start_dt : [2021,01,01]
+end_dt : [2022,01,01]
+
+# 模拟资金
+balance : 10000000
+
+
