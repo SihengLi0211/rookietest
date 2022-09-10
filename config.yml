@@ -4,10 +4,18 @@ tq_username : sancho
 tq_password : sancho
 
 # 实盘账户
-com : '' # 期货公司如：H海通期货
-account : ''
-password : ''
-tcp : '' # 可选交易地址如：tcp://1.2.3.4:1234/
+accounts:
+  - 0:
+    com : '' # 期货公司如：H海通期货
+    account : ''
+    password : ''
+    tcp : '' # 可选交易服务器地址如：tcp://1.2.3.4:1234/
+  # 多账户示例
+  # - 1:
+  #   com : 'H海通期货' 
+  #   account : '123456'
+  #   password : '123456'
+  #   tcp : 'tcp://1.2.3.4:1234/' 
 
 # 回测时间
 start_dt : [2021,01,01]
