@@ -5,11 +5,12 @@
 #AUTHOR: Sancho
 """
 量化交易策略框架
+天勤库的轻量级封装
 """
 import datetime
 import sys
 import yaml
-from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqSim, TqBacktest
+from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqSim, TqBacktest, TqMultiAccount
 
 
 class Tq:
@@ -39,11 +40,22 @@ class Tq:
             print(f"{e}\n认证失败!")
 
     def _type_shipan(self):
-        return self.get_api(
-            TqAccount(self.config['com'],
-                      self.config['account'],
-                      self.config['password'],
-                      td_url=self.config['tcp']))
+        accounts = self.config['accounts']
+        self.accounts_count = len(accounts)
+        if self.accounts_count == 1:
+            account = accounts[0]
+            return self.get_api(
+                TqAccount(account['com'],
+                          account['account'],
+                          account['password'],
+                          td_url=account['tcp']))
+        accounts = [
+            TqAccount(account['com'],
+                      account['account'],
+                      account['password'],
+                      td_url=account['tcp']) for account in accounts
+        ]
+        return self.get_api(TqMultiAccount(accounts))
 
     def _type_kq(self):
         return self.get_api(TqKq())
