@@ -8,6 +8,7 @@
 天勤库的轻量级封装
 """
 import datetime
+from symtable import Symbol
 import sys
 import yaml
 import pandas
@@ -91,62 +92,48 @@ class Tq:
 
 class Subscription:
     """订阅合约"""
-    def __init__(self, api: TqAccount) -> None:
+    def __init__(self, api: TqAccount, config: yaml) -> None:
         self.api = api
+        self.config = config
+        self.symbols = self.config['symbols']
 
-    def get_quotes(self, symbols: list) -> dict:
-        """订阅实时行情，支持订阅多合约"""
-        # {'symbol1':quote,'symbol2':quote}
-        return {symbol: self.api.get_quote(symbol) for symbol in symbols}
+    def get_quotes(self) -> dict:
+        """订阅实时行情"""
+        return {
+            symbol: self.api.get_quote(symbol)
+            for symbol in self.symbols['quotes']
+        }  # {'symbol1':quote,'symbol2':quote, ...}
 
     # TODO: 异步订阅实时行情
 
-    def get_kline(self, symbol: str,
-                  duration_seconds: int) -> pandas.DataFrame:
+    def get_klines(self, merge: bool = False) -> dict:
         """
         订阅K线
         
         Args:
-            symbol: 将订阅的k线如`DCE.m2109` \n
-            duration_seconds: 订阅周期(秒) \n
-        """
-        return self.api.get_kline_serial(symbol, duration_seconds)
-
-    def get_klines(self,
-                   symbols: list,
-                   duration_seconds: list,
-                   merge=False) -> dict:
-        """
-        订阅多条K线
-        
-        Args:
-            symbol: 将订阅的k线如`DCE.m2109` \n
-            duration_seconds: 订阅周期(秒) \n
             merge: 是否以第一个合约为基准合并K线(默认不合并) \n
         """
-        if len(symbols) > len(duration_seconds):
-            merge = True
         if merge:
-            duration_seconds = duration_seconds[0]
+            # 获取klines下第一个合约的数据周期
+            _ = list(self.symbols['klines'].values())[0]
+            duration_seconds = _[0]
+            data_length = _[1]
+            symbol_list = list(self.symbols['klines'].keys())
             return {
-                symbol: self.get_kline(symbol, duration_seconds)
-                for symbol in symbols
+                symbol_list[0]:
+                self.api.get_kline_serial(symbol_list, duration_seconds,
+                                          data_length)
             }
         return {
-            symbol: self.get_kline(symbol, d)
-            for symbol, d in zip(symbols, duration_seconds)
+            symbol: self.api.get_kline_serial(symbol, l[0], l[1])
+            for symbol, l in self.symbols['klines'].items()
         }
 
-    def get_ticks(self, symbols: list, data_lenth: int = 200) -> dict:
-        """
-        订阅tick级数据
-
-        symbols:合约列表
-        data_lenth:获取的长度(最大:8000)
-        """
+    def get_ticks(self) -> dict:
+        """订阅tick级数据"""
         return {
-            symbol: self.api.get_tick_serial(symbol, data_lenth)
-            for symbol in symbols
+            symbol: self.api.get_tick_serial(symbol, data_length)
+            for symbol, data_length in self.symbols['ticks'].items()
         }
 
 
@@ -168,9 +155,11 @@ if __name__ == "__main__":
     config = get_config()  # 获取配置信息
     tq = Tq(config)  # 登录天勤
     # 订阅合约
-    sub = Subscription(tq.api)
-    klines = sub.get_klines(['KQ.m@DCE.a', 'KQ.m@DCE.m'], [20])
-    print(klines['KQ.m@DCE.a'])
-    print(klines['KQ.m@DCE.m'])
+    sub = Subscription(tq.api, config)
+    quotes_dict = sub.get_quotes()
+    klines_dict = sub.get_klines(False)
+    klines_dict2 = sub.get_klines(True)
+    ticks_dict = sub.get_ticks()
+
     # 退出程序
     tq.api.close()
