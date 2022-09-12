@@ -17,11 +17,32 @@ accounts:
   #   password : '123456'
   #   tcp : 'tcp://1.2.3.4:1234/' 
 
-# 回测时间
+# 回测时间区间
 start_dt : [2021,01,01]
 end_dt : [2022,01,01]
 
 # 模拟资金
 balance : 10000000
+
+# 订阅合约
+symbols:
+  # 实时数据(合约代码)
+  quotes:
+    - KQ.m@DCE.a
+    - KQ.m@DCE.b
+
+  # K线数据(合约代码 : [数据周期/秒,序列长度])
+  klines:
+    KQ.m@DCE.j:
+      - 20
+      - 200
+    KQ.m@DCE.jd : 
+      - 20
+      - 200
+
+  # Tick数据(合约代码 : 序列长度)
+  ticks:
+    KQ.m@DCE.i : 200
+    KQ.m@DCE.l : 200
 
 
