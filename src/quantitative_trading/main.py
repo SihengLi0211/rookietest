@@ -8,11 +8,10 @@
 天勤库的轻量级封装
 """
 import datetime
-from symtable import Symbol
 import sys
 import yaml
 import pandas
-from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqSim, TqBacktest, TqMultiAccount
+from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqSim, TqBacktest, TqMultiAccount, TargetPosTask, TqMultiAccount
 
 
 class Tq:
@@ -48,34 +47,43 @@ class Tq:
             print(f"{e}\n认证失败!")
 
     def _type_shipan(self):
+        # REVIEW: 未测试
         accounts = self.config['accounts']
         self.accounts_count = len(accounts)
         if self.accounts_count == 1:  # 1个账户
-            account = accounts[0]
-            return self.get_api(
-                TqAccount(account['com'],
-                          account['account'],
-                          account['password'],
-                          td_url=account['tcp']))
+            accounts = accounts[0]
+            self.accounts = [
+                TqAccount(accounts['com'],
+                          accounts['account'],
+                          accounts['password'],
+                          td_url=accounts['tcp'])
+            ]
+
+            return self.get_api(self.accounts[0])
         # 多账户模式
-        accounts = [
+        self.accounts = [
             TqAccount(account['com'],
                       account['account'],
                       account['password'],
                       td_url=account['tcp']) for account in accounts
         ]
-        return self.get_api(TqMultiAccount(accounts))
+        return self.get_api(TqMultiAccount(self.accounts))
 
     def _type_kq(self):
-        return self.get_api(TqKq())
+        self.accounts = [TqKq()]
+        return self.get_api(self.accounts[0])
 
     def _type_moni(self, sim):
-        return self.get_api(sim)
+        self.accounts = [sim]
+        return self.get_api(self.accounts[0])
 
     def _type_huice(self, sim):
+        # REVIEW: 未测试
+        self.accounts = [sim]
         start_dt = datetime.date(*self.config['start_dt'])
         end_dt = datetime.date(*self.config['end_dt'])
-        return self.get_api_huice(sim, TqBacktest(start_dt, end_dt))
+        return self.get_api_huice(self.accounts[0],
+                                  TqBacktest(start_dt, end_dt))
 
     def get_api(self, _type=None):
         return TqApi(_type, auth=self.auth, web_gui=self.web_gui)
@@ -95,13 +103,12 @@ class Subscription:
     def __init__(self, api: TqAccount, config: yaml) -> None:
         self.api = api
         self.config = config
-        self.symbols = self.config['symbols']
 
     def get_quotes(self) -> dict:
         """订阅实时行情"""
         return {
             symbol: self.api.get_quote(symbol)
-            for symbol in self.symbols['quotes']
+            for symbol in self.config['quotes']
         }  # {'symbol1':quote,'symbol2':quote, ...}
 
     # TODO: 异步订阅实时行情
@@ -115,10 +122,10 @@ class Subscription:
         """
         if merge:
             # 获取klines下第一个合约的数据周期
-            _ = list(self.symbols['klines'].values())[0]
+            _ = list(self.config['klines'].values())[0]
             duration_seconds = _[0]
             data_length = _[1]
-            symbol_list = list(self.symbols['klines'].keys())
+            symbol_list = list(self.config['klines'].keys())
             return {
                 symbol_list[0]:
                 self.api.get_kline_serial(symbol_list, duration_seconds,
@@ -126,15 +133,70 @@ class Subscription:
             }
         return {
             symbol: self.api.get_kline_serial(symbol, l[0], l[1])
-            for symbol, l in self.symbols['klines'].items()
+            for symbol, l in self.config['klines'].items()
         }
 
     def get_ticks(self) -> dict:
         """订阅tick级数据"""
         return {
             symbol: self.api.get_tick_serial(symbol, data_length)
-            for symbol, data_length in self.symbols['ticks'].items()
+            for symbol, data_length in self.config['ticks'].items()
         }
+
+
+class Tread:
+    def __init__(self,
+                 api: TqApi,
+                 quotes: dict,
+                 accounts: list = None) -> None:
+        """
+        设置交易模式
+
+        args:
+            api: 天勤API \n
+            quotes: 订阅的quote，接收字典 \n
+            accounts: 设置多账户列表，元素类型为`TqAccount` \n
+        """
+        self.api = api
+        self.quotes = quotes
+        self.accounts = accounts
+        if not self.accounts:
+            # 获取账户
+            self.accounts = [self.api._account]
+        self.accounts_info, self.positions, self.orders = [], [], []
+        # 拉取账户情况
+        for account in self.accounts:
+            self.accounts_info.append(self.api.get_account(account))  # 账户资金情况
+            self.positions.append(
+                self.api.get_position(account=account))  # 持仓情况
+            self.orders.append(self.api.get_order(account=account))  # 委托单情况
+
+    def set_tread(self,
+                  symbol,
+                  price='ACTIVE',
+                  offset_priority='今昨,开',
+                  min_volume=None,
+                  max_volume=None,
+                  account=None) -> TargetPosTask:
+        """设置目标持仓对象"""
+        return TargetPosTask(self.api,
+                             symbol,
+                             price,
+                             offset_priority,
+                             min_volume,
+                             max_volume,
+                             account=account)
+
+    def set_treads(self, account=None):
+        """批量设置多合约目标持仓对象(单账户)"""
+        return {
+            name: self.set_tread(quote.instrument_id, account)
+            for name, quote in self.quotes.items()
+        }
+
+    def set_treads_accounts(self):
+        """批量设置多账户目标持仓对象"""
+        return {account: self.set_treads(account) for account in self.accounts}
 
 
 def get_config():
@@ -157,9 +219,14 @@ if __name__ == "__main__":
     # 订阅合约
     sub = Subscription(tq.api, config)
     quotes_dict = sub.get_quotes()
-    klines_dict = sub.get_klines(False)
-    klines_dict2 = sub.get_klines(True)
-    ticks_dict = sub.get_ticks()
+    # klines_dict = sub.get_klines(False)
+    # klines_dict2 = sub.get_klines(True)
+    # ticks_dict = sub.get_ticks()
+    # 初始化交易
+    tread = Tread(tq.api, config, tq.accounts)
+    print(tread.accounts_info)  # 账户资金情况
+    # print(tread.positions) # 账户持仓情况
+    # print(tread.orders) # 账户详单情况
 
     # 退出程序
     tq.api.close()
