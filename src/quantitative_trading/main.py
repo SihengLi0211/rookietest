@@ -187,46 +187,75 @@ class Tread:
                              max_volume,
                              account=account)
 
-    def set_treads(self, account=None):
+    def set_treads(self, account=None) -> dict:
         """批量设置多合约目标持仓对象(单账户)"""
         return {
             name: self.set_tread(quote.instrument_id, account)
             for name, quote in self.quotes.items()
         }
 
-    def set_treads_accounts(self):
+    def set_treads_accounts(self) -> dict:
         """批量设置多账户目标持仓对象"""
         return {account: self.set_treads(account) for account in self.accounts}
 
 
-def get_config():
-    # 检查操作系统，定义目录分隔符
-    _ = '/'
-    if PLATFORM.startswith('win'):
-        _ = '\\'
-    # 获取config目录
-    path = f'{sys.path[0]}{_}..{_}..{_}config.yml'
-    # 获取config内容
-    with open(path, 'r', encoding='utf-8') as f:
-        config = yaml.load(f, Loader=yaml.CLoader)
-    return config
+class Engine:
+    PLATFORM = sys.platform  # 获取操作系统平台
+
+    @classmethod
+    def get_config(cls) -> yaml:
+        # 获取配置文件
+        _ = '/'
+        if cls.PLATFORM.startswith('win'):
+            _ = '\\'
+        path = f'{sys.path[0]}{_}..{_}..{_}config.yml'
+        with open(path, 'r', encoding='utf-8') as f:
+            config = yaml.load(f, Loader=yaml.CLoader)
+        return config
+
+    def __init__(self) -> None:
+        self.config = self.get_config()  # 获取配置文件
+        # REVIEW: 重构时需要减少config的传递，使用值传递减少耦合
+        self.tq = Tq(self.config)  # 登录天勤
+        # 订阅合约
+        self.subscription = Subscription(self.tq.api, self.config)
+        subs = self.get_subs()
+        if not any(subs):
+            raise "\n请正确传入需要订阅的合约"
+        quotes_dict, klines_dict, ticks_dict = subs
+
+        print(quotes_dict)
+        print(klines_dict)
+        print(ticks_dict)
+
+        self.tq.api.close()
+
+        # 初始化交易
+        # tread = Tread(tq.api, config, tq.accounts)
+        # print(tread.accounts_info)  # 账户资金情况
+        # print(tread.positions) # 账户持仓情况
+        # print(tread.orders) # 账户详单情况
+
+    def get_subs(self) -> list:
+        # 获取需要订阅的合约，返回订阅的对象
+        subs = []
+        # quotes
+        if self.config.get('quotes', None):
+            subs.append(self.subscription.get_quotes())
+        else:
+            subs.append(None)
+        # klines
+        if self.config.get('klines', None):
+            subs.append(self.subscription.get_klines(self.config['merge']))
+        else:
+            subs.append(None)
+        # ticks
+        if self.config.get('ticks', None):
+            subs.append(self.subscription.get_ticks())
+        else:
+            subs.append(None)
+        return subs
 
 
 if __name__ == "__main__":
-    PLATFORM = sys.platform  # 获取操作系统平台
-    config = get_config()  # 获取配置信息
-    tq = Tq(config)  # 登录天勤
-    # 订阅合约
-    sub = Subscription(tq.api, config)
-    quotes_dict = sub.get_quotes()
-    # klines_dict = sub.get_klines(False)
-    # klines_dict2 = sub.get_klines(True)
-    # ticks_dict = sub.get_ticks()
-    # 初始化交易
-    tread = Tread(tq.api, config, tq.accounts)
-    print(tread.accounts_info)  # 账户资金情况
-    # print(tread.positions) # 账户持仓情况
-    # print(tread.orders) # 账户详单情况
-
-    # 退出程序
-    tq.api.close()
+    e = Engine()

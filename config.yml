@@ -27,6 +27,7 @@ balance : 9999999
 quotes:
   - KQ.m@DCE.a
   - KQ.m@DCE.b
+
 # K线数据(合约代码 : [数据周期/秒,序列长度])
 klines:
   KQ.m@DCE.j:
@@ -35,6 +36,9 @@ klines:
   KQ.m@DCE.jd : 
     - 20
     - 200
+# 如果是多个K线数据是否需要对齐
+merge : True
+
 # Tick数据(合约代码 : 序列长度)
 ticks:
   KQ.m@DCE.i : 200
