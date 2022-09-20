@@ -2,7 +2,17 @@
 # 天勤帐号
 # 注册地址:https://www.shinnytech.com/
 tq_username : sancho
-tq_password : lxzlxzlxz
+tq_password : sancho
+
+# 登录类型：`moni`=模拟(默认),`shipan`=实盘,`kq`=快期模拟,`huice`=回测
+type : moni
+
+# 是否开启网页可视化，默认`False`，`True`=随机端口，或使用固定端口如`:9876`
+gui : False
+
+# 模拟资金
+balance : 9999999
+
 # 实盘账户
 accounts:
   - 0:
@@ -16,11 +26,11 @@ accounts:
   #   account : '123456'
   #   password : '123456'
   #   tcp : 'tcp://1.2.3.4:1234/' 
+
 # 回测时间区间
 start_dt : [2021,01,01]
 end_dt : [2022,01,01]
-# 模拟资金
-balance : 9999999
+
 
 # ---- 订阅合约 ----
 # 实时数据(合约代码)
