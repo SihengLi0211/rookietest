@@ -1,7 +1,17 @@
+# ---- 登录账户 ----
 # 天勤帐号
 # 注册地址:https://www.shinnytech.com/
 tq_username : sancho
 tq_password : sancho
+
+# 登录类型：`moni`=模拟(默认),`shipan`=实盘,`kq`=快期模拟,`huice`=回测
+type : moni
+
+# 是否开启网页可视化，默认`False`，`True`=随机端口，或使用固定端口如`:9876`
+gui : False
+
+# 模拟资金
+balance : 9999999
 
 # 实盘账户
 accounts:
@@ -21,28 +31,33 @@ accounts:
 start_dt : [2021,01,01]
 end_dt : [2022,01,01]
 
-# 模拟资金
-balance : 10000000
 
-# 订阅合约
-symbols:
-  # 实时数据(合约代码)
-  quotes:
-    - KQ.m@DCE.a
-    - KQ.m@DCE.b
+# ---- 订阅合约 ----
+# 实时数据(合约代码)
+quotes:
+  - KQ.m@DCE.a
+  - KQ.m@DCE.b
 
-  # K线数据(合约代码 : [数据周期/秒,序列长度])
-  klines:
-    KQ.m@DCE.j:
-      - 20
-      - 200
-    KQ.m@DCE.jd : 
-      - 20
-      - 200
+# K线数据(合约代码 : [数据周期/秒,序列长度])
+klines:
+  KQ.m@DCE.j:
+    - 20
+    - 200
+  KQ.m@DCE.jd : 
+    - 20
+    - 200
+# 如果是多个K线数据是否需要对齐
+merge : True
 
-  # Tick数据(合约代码 : 序列长度)
-  ticks:
-    KQ.m@DCE.i : 200
-    KQ.m@DCE.l : 200
+# Tick数据(合约代码 : 序列长度)
+ticks:
+  KQ.m@DCE.i : 200
+  KQ.m@DCE.l : 200
+
+# ---- 交易设置 ----
+price: 'ACTIVE' # 下单方式,ACTIVE=对价下单,PASSIVE=排队价下单
+offset_priority: '今昨,开' # 开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
+min_volume: None # 大单拆分模式下每笔最小下单的手数
+max_volume: None # 大单拆分模式下每笔最大下单的手数
 
 
