@@ -12,7 +12,8 @@ import sys
 import yaml
 from tq import Tq
 from subscription import Subscription
-from tread import Tread
+from trade import Trade
+import monitor
 
 
 class Engine:
@@ -36,13 +37,13 @@ class Engine:
         self.subscription = Subscription(self.tq.api)
         self.quotes_dict, self.klines_dict, self.ticks_dict = self._get_subs()
         # 初始化账户
-        self.tread = Tread(self.tq.api, self.quotes_dict, self.tq.accounts)
-        self.accounts_info = self.tread.accounts_info
-        self.positions = self.tread.positions
-        self.orders = self.tread.orders
+        self.trade = Trade(self.tq.api, self.quotes_dict, self.tq.accounts)
+        self.accounts_info = self.trade.accounts_info
+        self.positions = self.trade.positions
+        self.orders = self.trade.orders
 
-    def _get_tq_api(self):
-        # 登录天勤，获取API
+    def _get_tq_api(self) -> Tq:
+        # 登录天勤
         return Tq(self.config['tq_username'], self.config['tq_password'],
                   self.config['type'], self.config['gui'],
                   self.config['balance'], self.config['accounts'])
@@ -70,6 +71,40 @@ class Engine:
             raise "\n请正确传入需要订阅的合约"
         return subs
 
+    def run(self) -> None:
+        """
+        事件循环函数:
+        * 实际发出网络数据包(如行情订阅指令或交易指令等).
+        * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
+        * 让正在运行中的后台任务获得动作机会(如策略程序创建的后台调仓任务只会在wait_update()时发出交易指令).
+        * 如果没有收到数据包，则挂起等待.
+        """
+        # 初始化持仓对象
+        task_dict = self.trade.set_trades()
+
+        # 初始化策略
+        self.strategies = []
+        strategies = self.config['strategies']
+        for name, quote in self.quotes_dict.items():
+            kline = self.klines_dict.get(name, None)
+            tick = self.ticks_dict.get(name, None)
+            exec(f'self.strategies.append(monitor.{strategies}())')
+            for s in self.strategies:
+                s.init(self.tq.api, self.accounts_info, self.positions,
+                       self.orders, quote, kline, tick)
+
+        # 事件循环
+        # TODO: 添加异步执行
+        try:
+            while 1:
+                self.tq.api.wait_update()  # 等待更新
+                for task in task_dict.values():  # 遍历合约对象
+                    for s in self.strategies:  # 遍历策略
+                        if volume := s.execution():
+                            self.trade.trading(task, volume)
+        except Exception as e:
+            self.tq.api.close()
+
 
 if __name__ == "__main__":
     e = Engine()
@@ -79,5 +114,4 @@ if __name__ == "__main__":
     print(f'----ticks----:\n{e.ticks_dict}\n')
     # 打印账户信息
     print(f'----accounts_info----:\n{e.accounts_info}\n')  # 账户资金情况
-
-    e.tq.api.close()
+    e.run()

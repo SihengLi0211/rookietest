@@ -6,7 +6,6 @@
 """
 测试用例
 """
-import datetime
 import sys
 import yaml
 from tqsdk import TqApi, TqAuth, TqSim

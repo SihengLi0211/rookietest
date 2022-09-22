@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-#FILE: tread.py
+#FILE: trade.py
 #CREATE_TIME: 2022-09-21
 #AUTHOR: Sancho
 
 from tqsdk import TqApi, TargetPosTask
 
 
-class Tread:
+class Trade:
     def __init__(self,
                  api: TqApi,
                  quotes: dict,
@@ -35,7 +35,7 @@ class Tread:
                 self.api.get_position(account=account))  # 持仓情况
             self.orders.append(self.api.get_order(account=account))  # 委托单情况
 
-    def _set_tread(self,
+    def _set_trade(self,
                    symbol,
                    price='ACTIVE',
                    offset_priority='今昨,开',
@@ -53,14 +53,28 @@ class Tread:
 
     # TODO: 自定义函数下单方式(TargetPosTask(price=fun))
 
-    def set_treads(self, account=None) -> dict:
+    def set_trades(self,
+                   price='ACTIVE',
+                   offset_priority='今昨,开',
+                   min_volume=None,
+                   max_volume=None,
+                   account=None) -> dict:
         """批量设置合约目标持仓对象(单账户)"""
         return {
-            name: self._set_tread(quote.instrument_id, account)
+            name: self._set_trade(quote.instrument_id, price, offset_priority,
+                                  min_volume, max_volume, account)
             for name, quote in self.quotes.items()
         }
 
-    def set_treads_accounts(self) -> dict:
+    def set_trades_accounts(self) -> dict:
         # REVIEW: 未测试
         """批量设置多账户目标持仓对象"""
-        return {account: self.set_treads(account) for account in self.accounts}
+        return {account: self.set_trades(account) for account in self.accounts}
+
+    def trading(self, target_pos_task: TargetPosTask, volume: int):
+        """
+        Args:
+            target_pos_task (TargetPosTask): 目标持仓对象
+            volume (int): 目标持仓手数，正数表示多头，负数表示空头，0表示空仓
+        """
+        target_pos_task.set_target_volume(volume)
