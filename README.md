@@ -1,5 +1,6 @@
 # rookietest
-因子策略测试文件，主要用于多因子期货模型的开发
+这是一个量化交易策略的框架，是对天勤SDK的轻量级封装
+TODO:因子策略测试文件，主要用于多因子期货模型的开发
 
 ### 测试用例
 1. 拷贝项目到本地：`git clone https://github.com/SihengLi0211/rookietest.git`
