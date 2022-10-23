@@ -1,8 +1,8 @@
 # |-------------------- 登录账户 --------------------|
 # 天勤帐号
 # 注册地址:https://www.shinnytech.com/
-tq_username: sancho
-tq_password: lxzlxzlxz
+tq_username: 'sancho'
+tq_password: 'lxzlxzlxz'
 
 # 登录类型：`moni`=模拟(默认),`shipan`=实盘,`kq`=快期模拟,`huice`=回测
 type: moni
