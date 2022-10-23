@@ -4,7 +4,10 @@
 #CREATE_TIME: 2022-09-21
 #AUTHOR: Sancho
 
+from typing import Dict, Union
 from tqsdk import TqApi
+from tqsdk.objs import Quote
+from pandas import DataFrame
 
 
 class Subscription:
@@ -12,14 +15,16 @@ class Subscription:
     def __init__(self, api: TqApi) -> None:
         self.api = api
 
-    def get_quotes(self, quotes: list) -> dict:
+    def get_quotes(self, quotes: list) -> Dict[str, Quote]:
         """订阅实时行情"""
         return {symbol: self.api.get_quote(symbol)
                 for symbol in quotes}  # {'symbol1':quote,'symbol2':quote, ...}
 
     # TODO: 异步订阅实时行情
 
-    def get_klines(self, klines: dict, merge: bool = False) -> dict:
+    def get_klines(self,
+                   klines: dict,
+                   merge: bool = False) -> Dict[Union[list, str], DataFrame]:
         """
         订阅K线
         
@@ -42,7 +47,7 @@ class Subscription:
             for symbol, l in klines.items()
         }
 
-    def get_ticks(self, ticks: dict) -> dict:
+    def get_ticks(self, ticks: dict) -> Dict[str,DataFrame]:
         """订阅tick级数据"""
         return {
             symbol: self.api.get_tick_serial(symbol, data_length)

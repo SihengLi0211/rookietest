@@ -13,12 +13,12 @@ class Trade:
                  quotes: dict,
                  accounts: list = None) -> None:
         """
-        设置交易模式
+        初始化交易模式
 
         args:
             api: 天勤API \n
             quotes: 订阅的quote，接收字典 \n
-            accounts: （可选）设置多账户列表，元素类型为`TqAccount` \n
+            accounts: （可选）可设置多账户列表，元素类型为`TqAccount` \n
         """
         self.api = api
         self.quotes = quotes

@@ -9,6 +9,7 @@
 """
 
 import sys
+from typing import Dict, List, Union
 import yaml
 from tq import Tq
 from subscription import Subscription
@@ -20,8 +21,10 @@ class Engine:
     PLATFORM = sys.platform  # 获取操作系统平台
 
     @classmethod
-    def get_config(cls) -> yaml:
-        # 获取配置文件
+    def get_config(cls) -> dict:
+        """
+        获取配置文件
+        """
         _ = '/'
         if cls.PLATFORM.startswith('win'):
             _ = '\\'
@@ -31,8 +34,10 @@ class Engine:
         return config
 
     def __init__(self) -> None:
-        self.config = self.get_config()  # 获取配置文件
-        self.tq = self._get_tq_api()  # 登录天勤
+        # 获取配置文件
+        self.config = self.get_config()
+        # 登录天勤
+        self.tq = self._get_tq_api()
         # 订阅合约
         self.subscription = Subscription(self.tq.api)
         self.quotes_dict, self.klines_dict, self.ticks_dict = self._get_subs()
@@ -43,13 +48,17 @@ class Engine:
         self.orders = self.trade.orders
 
     def _get_tq_api(self) -> Tq:
-        # 登录天勤
+        """
+        登录天勤，返回天勤对象
+        """
         return Tq(self.config['tq_username'], self.config['tq_password'],
                   self.config['type'], self.config['gui'],
                   self.config['balance'], self.config['accounts'])
 
-    def _get_subs(self) -> list:
-        # 获取需要订阅的合约，返回订阅的对象
+    def _get_subs(self) -> List[Union[dict, None]]:
+        """
+        获取需要订阅的合约，返回订阅的对象
+        """
         subs = []
         # quotes
         if quotes := self.config.get('quotes', None):
@@ -91,17 +100,16 @@ class Engine:
             exec(f'self.strategies.append(monitor.{strategies}())')
             for s in self.strategies:
                 s.init(self.tq.api, self.accounts_info, self.positions,
-                       self.orders, quote, kline, tick)
+                       self.orders, quote, kline, tick)  # 初始化策略
 
         # 事件循环
         # TODO: 添加异步执行
         try:
-            while 1:
-                self.tq.api.wait_update()  # 等待更新
+            while self.tq.api.wait_update():  # 等待更新
                 for task in task_dict.values():  # 遍历合约对象
                     for s in self.strategies:  # 遍历策略
-                        if volume := s.execution():
-                            self.trade.trading(task, volume)
+                        if volume := s.execution():  # 执行策略
+                            self.trade.trading(task, volume)  # 调仓
         except Exception as e:
             self.tq.api.close()
 
